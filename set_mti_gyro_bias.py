@@ -126,7 +126,7 @@ def adjust_gyro_bias_interactively(device, gyro_bias_values, gyro_means):
         if not adjustGyroBias(device, 0.0, 0.0, 0.0):
             print("Failed to revert the gyro bias values.")
     elif choice == '4':
-        # Option 3: Revert to original bias values
+        # Option 4: Revert to original bias values
         if not adjustGyroBias(device, gyro_bias_values[0], gyro_bias_values[1], gyro_bias_values[2]):
             print("Failed to revert the gyro bias values.")
     else:
