@@ -19,7 +19,9 @@ Download from [`Xsens Website`](https://www.movella.com/hubfs/FirmwareUpdater.zi
 copy the firmwarefile [mti630_product-v1.13.0-master-b0-r1706185132.xff](./firmware_file/mti630_product-v1.13.0-master-b0-r1706185132.xff) to the installation folder of Firmware Updater Software.
 
 ### Update Firmware from Command line
+```
 firmwareupdater_gui64.exe -f mti630_product-v1.13.0-master-b0-r1706185132.xff -s
+```
 
 ![Alt text](./images/firmware_updater_with_xff.png)
 
