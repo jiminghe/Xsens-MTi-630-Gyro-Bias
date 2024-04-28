@@ -209,7 +209,7 @@ if __name__ == '__main__':
         rad2deg = 180.0 / math.pi
 
         startTime = xda.XsTimeStamp_nowMs()
-        seconds_to_measure = 10
+        seconds_to_measure = 100
         print(f"Main loop. Recording data for {seconds_to_measure} seconds.")
         seconds_to_measure *=1000
         
