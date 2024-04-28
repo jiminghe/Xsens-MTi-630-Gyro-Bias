@@ -103,7 +103,8 @@ def adjust_gyro_bias_interactively(device, gyro_bias_values, gyro_means):
     print("Choose an option for setting gyro bias:")
     print("1) Write the measured gyro mean values as the gyro bias")
     print("2) Write your own value to gyro bias")
-    print("3) Don't do anything")
+    print("3) Revert to factory default values")
+    print("4) Don't do anything")
 
     # Get user input
     choice = input("Enter your choice (1, 2, or 3): ")
@@ -121,6 +122,10 @@ def adjust_gyro_bias_interactively(device, gyro_bias_values, gyro_means):
         elif not adjustGyroBias(device, *values):
             print("Failed to set the gyro bias values.")
     elif choice == '3':
+        # Option 3: Revert to factory default bias values
+        if not adjustGyroBias(device, 0.0, 0.0, 0.0):
+            print("Failed to revert the gyro bias values.")
+    elif choice == '4':
         # Option 3: Revert to original bias values
         if not adjustGyroBias(device, gyro_bias_values[0], gyro_bias_values[1], gyro_bias_values[2]):
             print("Failed to revert the gyro bias values.")
@@ -204,7 +209,7 @@ if __name__ == '__main__':
         rad2deg = 180.0 / math.pi
 
         startTime = xda.XsTimeStamp_nowMs()
-        seconds_to_measure = 100
+        seconds_to_measure = 10
         print(f"Main loop. Recording data for {seconds_to_measure} seconds.")
         seconds_to_measure *=1000
         
