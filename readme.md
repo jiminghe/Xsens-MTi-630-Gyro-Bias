@@ -55,7 +55,8 @@ python set_mti_gyro_bias.py
 After the measurements, the code would compute the gyro mean/std/min/max, and prompt the user to choose 3 options:
  - option 1: Write the measured gyro mean values as the gyro bias
  - option 2: Write your own value to gyro bias
- - option 3: Don't do anything
+ - option 3: Revert to factory default values
+ - option 4: Don't do anything
 
 The prefered choice should be 1, but you could also try other options to see how it would impact your orientation output.
 
