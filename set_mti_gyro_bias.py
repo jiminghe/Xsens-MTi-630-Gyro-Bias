@@ -82,12 +82,12 @@ def requestGyroBias(device):
             return gyro_bias
     return None  # Return None if the request failed or no data received
 
-def adjustGyroBias(device, biasX=0.0, biaxY=0.0, biasZ=0.0):
+def adjustGyroBias(device, biasX=0.0, biasY=0.0, biasZ=0.0):
     snd = xda.XsMessage(0x78, 0x0E)
     snd.setDataByte(0x05, 1)
-    print(f"set the gyro bias X/Y/Z to = {biasX}, {biaxY}, {biasZ}")
+    print(f"set the gyro bias X/Y/Z to = {biasX}, {biasY}, {biasZ} deg/sec.")
     snd.setDataFloat(biasX, 2)
-    snd.setDataFloat(biaxY, 6)
+    snd.setDataFloat(biasY, 6)
     snd.setDataFloat(biasZ, 10)
 
     print(f"set the gyro bias, full xbus message to send: {snd.toHexString()}")
@@ -231,7 +231,7 @@ if __name__ == '__main__':
         if isinstance(gyro_data, list):
             gyro_data = np.array(gyro_data)
         
-        print("Removing callback handler...")
+        print("\nRemoving callback handler...")
         device.removeCallbackHandler(callback)
         
         print("Putting device into configuration mode again...")
