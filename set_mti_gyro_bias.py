@@ -107,7 +107,7 @@ def adjust_gyro_bias_interactively(device, gyro_bias_values, gyro_means):
     print("4) Don't do anything")
 
     # Get user input
-    choice = input("Enter your choice (1, 2, or 3): ")
+    choice = input("Enter your choice (1, 2, 3 or 4): ")
     
     if choice == '1':
         # Option 1: Use computed mean values
