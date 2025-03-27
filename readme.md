@@ -44,30 +44,27 @@ Note that the internet connection is needed, as it would install numpy
 
 ## How to Run the Program
 
-Next you could run the program, by default it will run for 100 seconds, but if you want to make it longer, change this line code to a different value at [set_mti_gyro_bias.py](set_mti_gyro_bias.py)
-```
-seconds_to_measure = 100
-```
-
 Please make sure the MTi-630/630R is in a very quiet place, without interference from people walking by, knocking at the table, or machine vibrations, then run:
 ```
 python set_mti_gyro_bias.py
 ```
 
 After the measurements, the code would compute the gyro mean/std/min/max, and prompt the user to choose 4 options:
- - option 1: Write the measured gyro mean values as the gyro bias
- - option 2: Write your own value to gyro bias
- - option 3: Revert to factory default values
- - option 4: Don't do anything
+ - option 1: Apply the calculated gyro bias values
+ - option 2: Keep the original gyro bias values
+ - option 3: Enter your own custom gyro bias values
+ - option 4: Revert to factory default values
 
 The prefered choice should be 1, but you could also try other options to see how it would impact your orientation output.
+
+If you don't want to change anything, you could select 2.
 
 
 ## Note
 
-In this repo, we included the Xsens Device Api Python 3.8 library, if you have different version of Python, you could download the full MT Software Suite 2024.1 at [`Xsens Website`](https://www.movella.com/support/software-documentation), after installation, the Xsens Device Api Python libraries are located at ``C:\Program Files\Xsens\MT Software Suite 2024.1\MT SDK\Python\x64``
+In this repo, we included the Xsens Device Api Python 3.8 library, if you have different version of Python, you could download the full MT Software Suite 2025.0 at [`Xsens Website`](https://www.movella.com/support/software-documentation), after installation, the Xsens Device Api Python libraries are located at ``C:\Program Files\Xsens\MT Software Suite 2025.0\MT SDK\Python\x64``
 
-The library works for ``x86 platform`` cpus, but not for Arm devices, for Arm devices, you could adapt the code based on the ``C:\Program Files\Xsens\MT Software Suite 2024.1\MT SDK\Examples\xda_public_cpp``
+The library works for ``x86 platform`` cpus, but not for Arm devices, for Arm devices, you could adapt the code based on the ``C:\Program Files\Xsens\MT Software Suite 2025\MT SDK\Examples\xda_public_cpp``
 
 
 For more details of the command, refer to [this doc](./firmware_file/Additional-Gyro-Bias-Offset_instructions.pdf)
