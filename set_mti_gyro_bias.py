@@ -70,9 +70,10 @@ class XdaCallback(xda.XsCallback):
         self.m_lock.release()
 
 def requestGyroBias(device):
+    """Request current gyro bias values from the device"""
     snd = xda.XsMessage(0x78, 0x02)
     snd.setDataByte(0x05, 1)
-    print(f"request the gyro bias, full xbus message to send: {snd.toHexString()}")
+    print(f"Requesting gyro bias, full xbus message to send: {snd.toHexString()}")
     rcv = xda.XsMessage()
     if device.sendCustomMessage(snd, True, rcv, 500):
         if rcv.getMessageId() == 0x79:
@@ -87,14 +88,15 @@ def requestGyroBias(device):
     return None  # Return None if the request failed or no data received
 
 def adjustGyroBias(device, biasX=0.0, biasY=0.0, biasZ=0.0):
+    """Set gyro bias values on the device"""
     snd = xda.XsMessage(0x78, 0x0E)
     snd.setDataByte(0x05, 1)
-    print(f"set the gyro bias X/Y/Z to = {biasX}, {biasY}, {biasZ} deg/sec.")
+    print(f"Setting gyro bias X/Y/Z to = {biasX}, {biasY}, {biasZ} deg/sec.")
     snd.setDataFloat(biasX, 2)
     snd.setDataFloat(biasY, 6)
     snd.setDataFloat(biasZ, 10)
 
-    print(f"set the gyro bias, full xbus message to send: {snd.toHexString()}")
+    print(f"Setting gyro bias, full xbus message to send: {snd.toHexString()}")
     rcv = xda.XsMessage()
     if device.sendCustomMessage(snd, True, rcv, 500):
         if rcv.getMessageId() == 0x79:
@@ -102,78 +104,11 @@ def adjustGyroBias(device, biasX=0.0, biasY=0.0, biasZ=0.0):
             return True
     return False
 
-
-def adjust_gyro_bias_interactively(device, original_gyro_bias, calculated_gyro_bias, calculated_std):
-    """Interactive function to adjust gyro bias based on user choice"""
-    # Present options to the user
-    print("\n===== APPLY CALIBRATION =====")
-    print("Options:")
-    print("  1) Apply the calculated gyro bias values")
-    print(f"     Calculated values (deg/sec): X={calculated_gyro_bias[0]:.4f}, Y={calculated_gyro_bias[1]:.4f}, Z={calculated_gyro_bias[2]:.4f}")
-    print("  2) Keep the original gyro bias values")
-    print(f"     Original values (deg/sec): X={original_gyro_bias[0]:.4f}, Y={original_gyro_bias[1]:.4f}, Z={original_gyro_bias[2]:.4f}")
-    print("  3) Enter your own custom gyro bias values")
-    print("  4) Revert to factory default values (0.0, 0.0, 0.0)")
+def collect_gyro_data(device, callback, seconds_to_measure=5):
+    """Collect gyro data while the device is stationary"""
+    print(f"\nCollecting gyroscope data for {seconds_to_measure} seconds...")
+    print("Please ensure the device remains completely stationary during measurement.")
     
-    # Get user input
-    user_choice = input("Enter your choice (1, 2, 3, or 4): ")
-    
-    # Process user choice
-    if user_choice == '1':
-        # Option 1: Use calculated values
-        if adjustGyroBias(device, calculated_gyro_bias[0], calculated_gyro_bias[1], calculated_gyro_bias[2]):
-            print("Successfully applied calculated gyro bias values.")
-            return True
-        else:
-            print("Failed to apply calculated gyro bias values.")
-            return False
-    elif user_choice == '2':
-        # Option 2: Keep original values
-        if adjustGyroBias(device, original_gyro_bias[0], original_gyro_bias[1], original_gyro_bias[2]):
-            print("Restored original gyro bias values.")
-            return True
-        else:
-            print("Failed to restore original gyro bias values.")
-            return False
-    elif user_choice == '3':
-        # Option 3: User provides custom values
-        print("Enter custom gyro bias values (in deg/sec):")
-        try:
-            bias_x = float(input("X-axis bias: "))
-            bias_y = float(input("Y-axis bias: "))
-            bias_z = float(input("Z-axis bias: "))
-            
-            if adjustGyroBias(device, bias_x, bias_y, bias_z):
-                print("Successfully applied custom gyro bias values.")
-                return True
-            else:
-                print("Failed to apply custom gyro bias values.")
-                return False
-        except ValueError:
-            print("Invalid input. Values must be numbers.")
-            return False
-    elif user_choice == '4':
-        # Option 4: Factory defaults (zeros)
-        if adjustGyroBias(device, 0.0, 0.0, 0.0):
-            print("Successfully reverted to factory default gyro bias values (0.0, 0.0, 0.0).")
-            return True
-        else:
-            print("Failed to revert to factory default gyro bias values.")
-            return False
-    else:
-        print("Invalid choice. No changes made to gyro bias values.")
-        return False
-    
-def collect_gyro_data(device, callback, position_name, seconds_to_measure=5):
-    """Collect gyro data for a specific position"""
-    print(f"\nPlease place the sensor in the {position_name} position.")
-    user_ready = input("Type 'Y' when the sensor is correctly positioned: ")
-    
-    if user_ready.upper() != 'Y':
-        print("Skipping this position...")
-        return None
-    
-    print(f"Collecting data for {position_name} for {seconds_to_measure} seconds...")
     gyro_data = []
     rad2deg = 180.0 / math.pi
     
@@ -197,61 +132,266 @@ def collect_gyro_data(device, callback, position_name, seconds_to_measure=5):
                 s = f"Gyr X: {gyr[0]:.2f}, Gyr Y: {gyr[1]:.2f}, Gyr Z: {gyr[2]:.2f}"
                 print(f"{s}\r", end="", flush=True)
     
-    print(f"\nCollected {len(gyro_data)} samples for {position_name}")
+    print(f"\nCollected {len(gyro_data)} samples")
     
     if len(gyro_data) == 0:
-        print("Warning: No data collected for this position!")
+        print("Warning: No data collected!")
         return None
     
     return np.array(gyro_data)
 
-def calculate_gyro_bias(position_data):
-    """Calculate gyro bias from all positions data"""
-    # Combine all data from all positions
-    all_x_data = np.concatenate([pos[:, 0] for pos in position_data if pos is not None])
-    all_y_data = np.concatenate([pos[:, 1] for pos in position_data if pos is not None])
-    all_z_data = np.concatenate([pos[:, 2] for pos in position_data if pos is not None])
+def calculate_gyro_bias(gyro_data):
+    """Calculate gyro bias from collected data"""
+    if gyro_data is None or len(gyro_data) == 0:
+        return None, None
     
-    # Calculate offsets
-    offset_x = np.mean(all_x_data)
-    offset_y = np.mean(all_y_data)
-    offset_z = np.mean(all_z_data)
+    # Calculate offsets (means)
+    offset_x = np.mean(gyro_data[:, 0])
+    offset_y = np.mean(gyro_data[:, 1])
+    offset_z = np.mean(gyro_data[:, 2])
     
     # Calculate standard deviations for quality assessment
-    std_x = np.std(all_x_data)
-    std_y = np.std(all_y_data)
-    std_z = np.std(all_z_data)
+    std_x = np.std(gyro_data[:, 0])
+    std_y = np.std(gyro_data[:, 1])
+    std_z = np.std(gyro_data[:, 2])
     
     return np.array([offset_x, offset_y, offset_z]), np.array([std_x, std_y, std_z])
 
-def print_position_stats(position_name, gyro_data):
-    """Print statistics for a single position"""
+def print_gyro_stats(gyro_data):
+    """Print statistics for the collected gyro data"""
     if gyro_data is None or len(gyro_data) == 0:
-        print(f"{position_name}: No data collected")
+        print("No data available")
         return
         
-    # Calculate means
+    # Calculate statistics
     gyro_x_mean = np.mean(gyro_data[:, 0])
     gyro_y_mean = np.mean(gyro_data[:, 1])
     gyro_z_mean = np.mean(gyro_data[:, 2])
     
-    # Calculate standard deviations
     gyro_x_std = np.std(gyro_data[:, 0])
     gyro_y_std = np.std(gyro_data[:, 1])
     gyro_z_std = np.std(gyro_data[:, 2])
     
-    print(f"\n{position_name} Statistics:")
-    print(f"  X-axis (deg/sec) - Mean: {gyro_x_mean:.4f}, Std: {gyro_x_std:.4f}")
-    print(f"  Y-axis (deg/sec) - Mean: {gyro_y_mean:.4f}, Std: {gyro_y_std:.4f}")
-    print(f"  Z-axis (deg/sec) - Mean: {gyro_z_mean:.4f}, Std: {gyro_z_std:.4f}")
+    gyro_x_min = np.min(gyro_data[:, 0])
+    gyro_y_min = np.min(gyro_data[:, 1])
+    gyro_z_min = np.min(gyro_data[:, 2])
+    
+    gyro_x_max = np.max(gyro_data[:, 0])
+    gyro_y_max = np.max(gyro_data[:, 1])
+    gyro_z_max = np.max(gyro_data[:, 2])
+    
+    print("\n===== MEASUREMENT STATISTICS =====")
+    print(f"X-axis (deg/sec) - Mean: {gyro_x_mean:.4f}, Std: {gyro_x_std:.4f}, Min: {gyro_x_min:.4f}, Max: {gyro_x_max:.4f}")
+    print(f"Y-axis (deg/sec) - Mean: {gyro_y_mean:.4f}, Std: {gyro_y_std:.4f}, Min: {gyro_y_min:.4f}, Max: {gyro_y_max:.4f}")
+    print(f"Z-axis (deg/sec) - Mean: {gyro_z_mean:.4f}, Std: {gyro_z_std:.4f}, Min: {gyro_z_min:.4f}, Max: {gyro_z_max:.4f}")
 
+def view_current_bias(device):
+    """View the current gyro bias settings"""
+    print("\n===== VIEW CURRENT GYRO BIAS =====")
+    
+    # Put device into config mode
+    print("Putting device into configuration mode...")
+    if not device.gotoConfig():
+        print("Could not put device into configuration mode.")
+        return
+    
+    bias = requestGyroBias(device)
+    
+    # Put device back into measurement mode
+    print("Putting device back into measurement mode...")
+    if not device.gotoMeasurement():
+        print("Warning: Could not put device back into measurement mode.")
+    
+    if bias is not None:
+        print(f"\nCurrent Gyro Bias Values (deg/sec):")
+        print(f"  X-axis: {bias[0]:.4f}")
+        print(f"  Y-axis: {bias[1]:.4f}")
+        print(f"  Z-axis: {bias[2]:.4f}")
+    else:
+        print("Failed to retrieve gyro bias values.")
+
+def reset_bias_to_factory(device):
+    """Reset gyro bias to factory defaults (0, 0, 0)"""
+    print("\n===== RESET GYRO BIAS TO FACTORY DEFAULTS =====")
+    
+    confirm = input("Are you sure you want to reset to factory defaults (0.0, 0.0, 0.0)? (Y/N): ")
+    if confirm.upper() != 'Y':
+        print("Reset cancelled.")
+        return
+    
+    # Put device into config mode
+    print("Putting device into configuration mode...")
+    if not device.gotoConfig():
+        print("Could not put device into configuration mode.")
+        return
+    
+    if adjustGyroBias(device, 0.0, 0.0, 0.0):
+        print("Successfully reset gyro bias to factory defaults.")
+    else:
+        print("Failed to reset gyro bias.")
+    
+    # Put device back into measurement mode
+    print("Putting device back into measurement mode...")
+    if not device.gotoMeasurement():
+        print("Warning: Could not put device back into measurement mode.")
+
+def set_custom_bias(device):
+    """Set custom gyro bias values"""
+    print("\n===== SET CUSTOM GYRO BIAS VALUES =====")
+    print("Enter custom gyro bias values (in deg/sec):")
+    
+    try:
+        bias_x = float(input("X-axis bias: "))
+        bias_y = float(input("Y-axis bias: "))
+        bias_z = float(input("Z-axis bias: "))
+        
+        confirm = input(f"\nApply bias values X={bias_x:.4f}, Y={bias_y:.4f}, Z={bias_z:.4f}? (Y/N): ")
+        if confirm.upper() != 'Y':
+            print("Operation cancelled.")
+            return
+        
+        # Put device into config mode
+        print("Putting device into configuration mode...")
+        if not device.gotoConfig():
+            print("Could not put device into configuration mode.")
+            return
+        
+        if adjustGyroBias(device, bias_x, bias_y, bias_z):
+            print("Successfully applied custom gyro bias values.")
+        else:
+            print("Failed to apply custom gyro bias values.")
+        
+        # Put device back into measurement mode
+        print("Putting device back into measurement mode...")
+        if not device.gotoMeasurement():
+            print("Warning: Could not put device back into measurement mode.")
+            
+    except ValueError:
+        print("Invalid input. Values must be numbers.")
+
+def estimate_and_apply_bias(device, callback):
+    """Estimate gyro bias and apply it"""
+    print("\n===== ESTIMATE AND APPLY GYRO BIAS =====")
+    print("The device will collect gyroscope data while stationary to estimate the bias.")
+    print("Please ensure:")
+    print("  - The device is placed on a stable surface")
+    print("  - No vibrations or movements")
+    print("  - No people walking nearby")
+    print("  - No external disturbances")
+    
+    ready = input("\nType 'Y' when ready to start measurement: ")
+    if ready.upper() != 'Y':
+        print("Measurement cancelled.")
+        return
+    
+    # Collect data
+    gyro_data = collect_gyro_data(device, callback, seconds_to_measure=5)
+    
+    if gyro_data is None:
+        print("Failed to collect gyroscope data.")
+        return
+    
+    # Print statistics
+    print_gyro_stats(gyro_data)
+    
+    # Calculate bias
+    gyro_bias, gyro_std = calculate_gyro_bias(gyro_data)
+    
+    if gyro_bias is None:
+        print("Failed to calculate gyro bias.")
+        return
+    
+    print("\n===== CALCULATED GYRO BIAS =====")
+    print(f"X-axis: {gyro_bias[0]:.4f} ± {gyro_std[0]:.4f} deg/sec")
+    print(f"Y-axis: {gyro_bias[1]:.4f} ± {gyro_std[1]:.4f} deg/sec")
+    print(f"Z-axis: {gyro_bias[2]:.4f} ± {gyro_std[2]:.4f} deg/sec")
+    
+    # Quality assessment
+    print("\n===== QUALITY ASSESSMENT =====")
+    std_threshold = 0.20  # deg/sec
+    quality_issues = []
+    
+    if gyro_std[0] > std_threshold:
+        quality_issues.append(f"X-axis variability is high ({gyro_std[0]:.4f} deg/sec)")
+    if gyro_std[1] > std_threshold:
+        quality_issues.append(f"Y-axis variability is high ({gyro_std[1]:.4f} deg/sec)")
+    if gyro_std[2] > std_threshold:
+        quality_issues.append(f"Z-axis variability is high ({gyro_std[2]:.4f} deg/sec)")
+        
+    if quality_issues:
+        print("Potential calibration quality issues detected:")
+        for issue in quality_issues:
+            print(f"  - {issue}")
+        print("Consider repeating the measurement with better stability.")
+    else:
+        print("Calibration quality looks good. Standard deviations are within acceptable limits.")
+    
+    # Ask user if they want to apply
+    apply = input("\nApply these calculated bias values? (Y/N): ")
+    if apply.upper() != 'Y':
+        print("Bias values not applied.")
+        return
+    
+    # Put device into config mode
+    print("Putting device into configuration mode...")
+    if not device.gotoConfig():
+        print("Could not put device into configuration mode.")
+        return
+    
+    # Apply bias
+    if adjustGyroBias(device, gyro_bias[0], gyro_bias[1], gyro_bias[2]):
+        print("Successfully applied calculated gyro bias values.")
+    else:
+        print("Failed to apply gyro bias values.")
+    
+    # Put device back into measurement mode
+    print("Putting device back into measurement mode...")
+    if not device.gotoMeasurement():
+        print("Warning: Could not put device back into measurement mode.")
+
+def display_menu():
+    """Display the main menu"""
+    print("\n" + "="*50)
+    print("MTi GYROSCOPE BIAS CONFIGURATION MENU")
+    print("="*50)
+    print("1. View current gyro bias values")
+    print("2. Reset gyro bias to factory defaults")
+    print("3. Set custom gyro bias values")
+    print("4. Estimate and apply gyro bias")
+    print("5. Exit")
+    print("="*50)
+
+def configure_device(device):
+    """Configure the device output settings"""
+    print("Configuring device output settings...")
+    configArray = xda.XsOutputConfigurationArray()
+    configArray.push_back(xda.XsOutputConfiguration(xda.XDI_PacketCounter, 0xFFFF))
+    configArray.push_back(xda.XsOutputConfiguration(xda.XDI_SampleTimeFine, 0xFFFF))
+    configArray.push_back(xda.XsOutputConfiguration(xda.XDI_StatusWord, 0xFFFF))
+    configArray.push_back(xda.XsOutputConfiguration(xda.XDI_Acceleration, 400))
+    configArray.push_back(xda.XsOutputConfiguration(xda.XDI_RateOfTurn, 400))
+    configArray.push_back(xda.XsOutputConfiguration(xda.XDI_MagneticField, 100))
+
+    if device.deviceId().isVru() or device.deviceId().isAhrs():
+        configArray.push_back(xda.XsOutputConfiguration(xda.XDI_Quaternion, 400))
+        configArray.push_back(xda.XsOutputConfiguration(xda.XDI_FreeAcceleration, 400))
+    elif device.deviceId().isGnssIns():
+        configArray.push_back(xda.XsOutputConfiguration(xda.XDI_Quaternion, 400))
+        configArray.push_back(xda.XsOutputConfiguration(xda.XDI_FreeAcceleration, 400))
+        configArray.push_back(xda.XsOutputConfiguration(xda.XDI_LatLon | xda.XDI_SubFormatFp1632, 400))
+        configArray.push_back(xda.XsOutputConfiguration(xda.XDI_AltitudeEllipsoid | xda.XDI_SubFormatFp1632, 400))
+        configArray.push_back(xda.XsOutputConfiguration(xda.XDI_VelocityXYZ | xda.XDI_SubFormatFp1632, 400))
+        configArray.push_back(xda.XsOutputConfiguration(xda.XDI_GnssPvtData, 0xFFFF))
+
+    if not device.setOutputConfiguration(configArray):
+        raise RuntimeError("Could not configure the device. Aborting.")
 
 if __name__ == '__main__':
     # Initialize logger
     logger = Logger()
     sys.stdout = logger
     
-    print(f"Starting IMU gyroscope calibration at {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"Starting MTi gyroscope bias configuration at {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print("Creating XsControl object...")
     control = xda.XsControl_construct()
     assert(control != 0)
@@ -259,6 +399,10 @@ if __name__ == '__main__':
     xdaVersion = xda.XsVersion()
     xda.xdaVersion(xdaVersion)
     print("Using XDA version %s" % xdaVersion.toXsString())
+
+    device = None
+    callback = None
+    mtPort = None
 
     try:
         print("Scanning for devices...")
@@ -293,134 +437,61 @@ if __name__ == '__main__':
         callback = XdaCallback()
         device.addCallbackHandler(callback)
 
-        # Put the device into configuration mode before configuring the device
+        # Put the device into configuration mode
         print("Putting device into configuration mode...")
         if not device.gotoConfig():
             raise RuntimeError("Could not put device into configuration mode. Aborting.")
 
-        # Get current gyro bias values
-        original_gyro_bias_values = requestGyroBias(device)
-        if original_gyro_bias_values is None:
-            print("Failed to retrieve gyro bias values.")
-            original_gyro_bias_values = np.array([0.0, 0.0, 0.0])
-        
-        print("Temporarily setting gyro offset to zeros for calibration...")
-        adjustGyroBias(device, 0.0, 0.0, 0.0)
-        
-        print("Configuring the device...")
-        configArray = xda.XsOutputConfigurationArray()
-        configArray.push_back(xda.XsOutputConfiguration(xda.XDI_PacketCounter, 0xFFFF))
-        configArray.push_back(xda.XsOutputConfiguration(xda.XDI_SampleTimeFine, 0xFFFF))
-        configArray.push_back(xda.XsOutputConfiguration(xda.XDI_StatusWord, 0xFFFF))
-        configArray.push_back(xda.XsOutputConfiguration(xda.XDI_Acceleration, 400))
-        configArray.push_back(xda.XsOutputConfiguration(xda.XDI_RateOfTurn, 400))
-        configArray.push_back(xda.XsOutputConfiguration(xda.XDI_MagneticField, 100))
+        # Configure device
+        configure_device(device)
 
-        if device.deviceId().isVru() or device.deviceId().isAhrs():
-            configArray.push_back(xda.XsOutputConfiguration(xda.XDI_Quaternion, 400))
-            configArray.push_back(xda.XsOutputConfiguration(xda.XDI_FreeAcceleration, 400))
-        elif device.deviceId().isGnssIns():
-            configArray.push_back(xda.XsOutputConfiguration(xda.XDI_Quaternion, 400))
-            configArray.push_back(xda.XsOutputConfiguration(xda.XDI_FreeAcceleration, 400))
-            configArray.push_back(xda.XsOutputConfiguration(xda.XDI_LatLon | xda.XDI_SubFormatFp1632, 400))
-            configArray.push_back(xda.XsOutputConfiguration(xda.XDI_AltitudeEllipsoid | xda.XDI_SubFormatFp1632, 400))
-            configArray.push_back(xda.XsOutputConfiguration(xda.XDI_VelocityXYZ | xda.XDI_SubFormatFp1632, 400))
-            configArray.push_back(xda.XsOutputConfiguration(xda.XDI_GnssPvtData, 0xFFFF))
-
-
-        if not device.setOutputConfiguration(configArray):
-            raise RuntimeError("Could not configure the device. Aborting.")
-
+        # Put device into measurement mode
         print("Putting device into measurement mode...")
         if not device.gotoMeasurement():
             raise RuntimeError("Could not put device into measurement mode. Aborting.")
 
-        # Define the six positions to measure
-        positions = [
-            "Z-up (Z axis pointing upward)",
-            "Z-down (Z axis pointing downward)",
-            "Y-up (Y axis pointing upward)",
-            "Y-down (Y axis pointing downward)",
-            "X-up (X axis pointing upward)",
-            "X-down (X axis pointing downward)"
-        ]
-
-        # Collect data for each position
-        seconds_per_position = 5  # Seconds to collect data for each position
-        position_data = []
-        
-        print("\n===== IMU GYROSCOPE CALIBRATION =====")
-        print("This procedure will collect gyroscope data in six different orientations")
-        print("to calculate the gyroscope bias offsets.\n")
-        print("Please ensure the sensor is completely stationary during each measurement.")
-        
-        for position in positions:
-            data = collect_gyro_data(device, callback, position, seconds_per_position)
-            position_data.append(data)
-            # Print statistics for this position
-            if data is not None:
-                print_position_stats(position, data)
-        
-        # Calculate gyro bias based on all positions
-        valid_positions = [p for p in position_data if p is not None and len(p) > 0]
-        
-        if len(valid_positions) == 0:
-            print("\nNo valid data collected from any position. Cannot calculate gyro bias.")
-        else:
-            gyro_bias, gyro_std = calculate_gyro_bias(valid_positions)
+        # Main menu loop
+        while True:
+            display_menu()
+            choice = input("Enter your choice (1-5): ")
             
-            print("\n===== CALIBRATION RESULTS =====")
-            print(f"Calculated Gyro Bias (deg/sec):")
-            print(f"  X-axis: {gyro_bias[0]:.4f} ± {gyro_std[0]:.4f}")
-            print(f"  Y-axis: {gyro_bias[1]:.4f} ± {gyro_std[1]:.4f}")
-            print(f"  Z-axis: {gyro_bias[2]:.4f} ± {gyro_std[2]:.4f}")
-            
-            print("\n===== QUALITY ASSESSMENT =====")
-            # Check if standard deviations are acceptably low
-            std_threshold = 0.20  # deg/sec
-            quality_issues = []
-            
-            if gyro_std[0] > std_threshold:
-                quality_issues.append(f"X-axis variability is high ({gyro_std[0]:.4f} deg/sec)")
-            if gyro_std[1] > std_threshold:
-                quality_issues.append(f"Y-axis variability is high ({gyro_std[1]:.4f} deg/sec)")
-            if gyro_std[2] > std_threshold:
-                quality_issues.append(f"Z-axis variability is high ({gyro_std[2]:.4f} deg/sec)")
-                
-            if quality_issues:
-                print("Potential calibration quality issues:")
-                for issue in quality_issues:
-                    print(f"  - {issue}")
-                print("Consider repeating the calibration with the sensor more stable.")
+            if choice == '1':
+                view_current_bias(device)
+            elif choice == '2':
+                reset_bias_to_factory(device)
+            elif choice == '3':
+                set_custom_bias(device)
+            elif choice == '4':
+                estimate_and_apply_bias(device, callback)
+            elif choice == '5':
+                print("\nExiting program...")
+                break
             else:
-                print("Calibration quality looks good. Standard deviations are within acceptable limits.")
-            
-            # Put device back into config mode for setting bias
-            print("Putting device into configuration mode...")
-            if not device.gotoConfig():
-                raise RuntimeError("Could not put device into configuration mode. Aborting.")
-            
-            # Use the interactive function to handle user choice
-            adjust_gyro_bias_interactively(device, original_gyro_bias_values, gyro_bias, gyro_std)
-        
-        print("Removing callback handler...")
-        device.removeCallbackHandler(callback)
-        
-        print("Closing port...")
-        control.closePort(mtPort.portName())
-
-        print("Closing XsControl object...")
-        control.close()
+                print("\nInvalid choice. Please enter a number between 1 and 5.")
 
     except RuntimeError as error:
-        print(error)
+        print(f"Runtime error: {error}")
         sys.exit(1)
     except Exception as e:
         print(f"Unexpected error: {e}")
+        import traceback
+        traceback.print_exc()
         sys.exit(1)
-    else:
-        print("Successful exit.")
     finally:
+        # Cleanup
+        if device is not None and callback is not None:
+            print("Removing callback handler...")
+            device.removeCallbackHandler(callback)
+        
+        if control is not None and mtPort is not None and not mtPort.empty():
+            print("Closing port...")
+            control.closePort(mtPort.portName())
+
+        if control is not None:
+            print("Closing XsControl object...")
+            control.close()
+
         # Restore original stdout and close log file
         sys.stdout = logger.original_stdout
-        logger.close()      
+        logger.close()
+        print("Program terminated.")
