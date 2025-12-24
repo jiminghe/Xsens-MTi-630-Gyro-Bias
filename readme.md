@@ -38,6 +38,7 @@ Now that it is successful, click "Finish".
 python -m venv venv
 venv\Scripts\activate
 pip install -r requirements.txt
+pip install whl_files\xsensdeviceapi-2025.5.0-cp310-none-win_amd64.whl
 ```
 
 Note: The wheel file for your Python version must be available. Supported versions are Python 3.8, 3.9, and 3.10.
